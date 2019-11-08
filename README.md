@@ -48,8 +48,3 @@ Please (do your best to) stick to [Google's C++ style guide](https://google.gith
 
 Note: regardless of the changes you make, your project must be buildable using
 cmake and make!
-
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
