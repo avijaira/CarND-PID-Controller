@@ -48,3 +48,7 @@ Please (do your best to) stick to [Google's C++ style guide](https://google.gith
 
 Note: regardless of the changes you make, your project must be buildable using
 cmake and make!
+
+## References
+* https://github.com/awbrown90/CarND-PID-Control-Project
+* https://medium.com/intro-to-artificial-intelligence/pid-controller-udacitys-self-driving-car-nanodegree-c4fd15bdc981
