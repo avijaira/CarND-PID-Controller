@@ -4,6 +4,7 @@
 #include <string>
 #include "json.hpp"
 #include "PID.h"
+#include "twiddle.h"
 
 // for convenience
 using nlohmann::json;
@@ -34,17 +35,17 @@ int main() {
   uWS::Hub h;
 
   PID pid;  // Steer PID
-  PID spid;  // Speed PID
+  // PID spid;  // Speed PID
+  double p[3] = {0.2, 0.0003, 3.0};  // {Kp, Ki, Kd}
 
   /**
    * Initialize the pid variable.
    */
-  pid.Init();
-  spid.Init();
+  pid.Init(p[0], p[1], p[2]);
+  // spid.Init();
 
 
-  h.onMessage([&pid, &spid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
-                     uWS::OpCode opCode) {
+  h.onMessage([&pid, &p, &spid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -62,14 +63,16 @@ int main() {
           double speed = std::stod(j[1]["speed"].get<string>());
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value;
-          double speed_value;
+          // double speed_value;
+          double throttle = 0.3;
 
           /**
-           * TODO: Calculate steering value here, remember the steering value is
-           *   [-1, 1].
+           * Calculate steering value here, remember the steering value is [-1, 1].
            * NOTE: Feel free to play around with the throttle and speed.
            *   Maybe use another PID controller to control the speed!
            */
+          pid.UpdateError(cte);
+          steer_value = pid.TotalError();
 
 
 
@@ -79,7 +82,7 @@ int main() {
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = throttle;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
