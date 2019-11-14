@@ -41,10 +41,20 @@ class PID {
 
   /**
    * PID Coefficients
-   */ 
+   */
   double Kp;
   double Ki;
   double Kd;
+
+  /**
+   * Total Error  ??
+   */
+  double total_error;
+
+  /**
+   * Cycle Counter  ??
+   */
+  int cycles;
 };
 
 #endif  // PID_H
