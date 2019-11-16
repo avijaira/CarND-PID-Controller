@@ -68,6 +68,7 @@ int main() {
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value;
           double throttle = 0.3;  // Same as speed value.
+          json msgJson;
 
           /**
            * Calculate steering value here, remember the steering value is [-1, 1].
@@ -107,7 +108,7 @@ int main() {
               twiddle_case_i++;
             }
             if (twiddle_case_i > 0) {
-              idx = (idx + 1) % p.size();
+              idx = (idx + 1) % 3;
               twiddle_case_1 = true;
               twiddle_case_2 = true;
               twiddle_case_i = 0;
@@ -116,7 +117,7 @@ int main() {
             n = 0;
             twiddle_idx++;
 
-            double sum_dp = sum(dp);
+            double sum_dp = dp[0] + dp[1] + dp[2];
             if (sum_dp > tol) {  // Reset simulator
                 std::string reset_msg = "42[\"reset\",{}]";
                 ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT);
@@ -126,7 +127,6 @@ int main() {
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
-          json msgJson;
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle;  // Same as speed value.
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
