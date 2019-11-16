@@ -31,12 +31,6 @@ class PID {
    */
   double TotalError();
 
-  /**
-   * Calculate the accumulated twiddle error.
-   * @output The accumulated twiddle error
-   */
-  double TwiddleError();
-
  private:
   /**
    * PID Errors
@@ -51,16 +45,6 @@ class PID {
   double Kp;
   double Ki;
   double Kd;
-
-  /**
-   * Accumulated Twiddle Error
-   */
-  double twiddle_error;
-
-  /**
-   * Twiddle Counter
-   */
-  int twiddle_count;
 };
 
 #endif  // PID_H

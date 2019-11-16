@@ -4,7 +4,7 @@
 #include <string>
 #include "json.hpp"
 #include "PID.h"
-#include "twiddle.h"
+//#include "twiddle.h"
 
 // for convenience
 using nlohmann::json;
@@ -16,8 +16,6 @@ double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
 
 // Checks if the SocketIO event has JSON data.
-// If there is data the JSON object in string format will be returned,
-// else the empty string "" will be returned.
 string hasData(string s) {
   auto found_null = s.find("null");
   auto b1 = s.find_first_of("[");
@@ -35,26 +33,32 @@ int main() {
   uWS::Hub h;
 
   PID pid;  // Steer PID
-  // PID spid;  // Speed PID
   double p[3] = {0.2, 0.0003, 3.0};  // {Kp, Ki, Kd}
+  double dp[3] = {0.01, 0.0001, 0.05};
+  int idx = 0;  // Parameter (p) and delta parameter (dp) index: [0-2]
+  int twiddle_idx = 0;
+  double tol = 0.00001  // Tolerance or error below 1.0e-10
+  int twiddle_case_i = 0;  // Identify Twiddle case
+  bool twiddle_case_1 = true;
+  bool twiddle_case_2 = true;
+  int n = 0;  // Keep track of Twiddle iteration
+  int twiddle_n = 500;  // Minimum iterations before accumulating Twiddle error
+  double twiddle_err = 0.0;
+  double err = 0.0;
+  double best_err = 100000.0;
 
-  /**
-   * Initialize the pid variable.
-   */
+  // Initialize the pid variable.
   pid.Init(p[0], p[1], p[2]);
-  // spid.Init();
 
+  h.onMessage([&pid, &p, &dp, &idx, &twiddle_idx, &tol, &twiddle_case_i, &twiddle_case_1, &twiddle_case_2,
+               &n, &twiddle_n, &twiddle_err, &err, &best_err]
+              (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 
-  h.onMessage([&pid, &p, &spid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
-    // "42" at the start of the message means there's a websocket message event.
-    // The 4 signifies a websocket message
-    // The 2 signifies a websocket event
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
       auto s = hasData(string(data).substr(0, length));
 
       if (s != "") {
         auto j = json::parse(s);
-
         string event = j[0].get<string>();
 
         if (event == "telemetry") {
@@ -63,36 +67,72 @@ int main() {
           double speed = std::stod(j[1]["speed"].get<string>());
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value;
-          // double speed_value;
-          double throttle = 0.3;
+          double throttle = 0.3;  // Same as speed value.
 
           /**
            * Calculate steering value here, remember the steering value is [-1, 1].
-           * NOTE: Feel free to play around with the throttle and speed.
-           *   Maybe use another PID controller to control the speed!
+           * Maybe use another PID controller to control the speed!
            */
+          if (n == 0) {
+            pid.Init(p[0], p[1], p[2]);
+          }
+
           pid.UpdateError(cte);
           steer_value = pid.TotalError();
 
-
+          twiddle_err += cte * cte;
+          n++;
+          if (n > twiddle_n) {
+            err = twiddle_err / twiddle_n;
+            if (twiddle_case_1) {  // Twiddle Case 1
+              p[idx] += dp[idx];  // Increase parameter range by delta parameter
+              twiddle_case_1 = false;
+            } else if (twiddle_case_2) {  // Twiddle Case 2
+              if (err < best_err) {
+                best_err = err;
+                dp[idx] *= 1.1;
+                twiddle_case_i++;
+              } else {
+                p[idx] -= 2 * dp[idx];  // Decrease parameter range by delta parameter (tighter bounds)
+                twiddle_case_2 = false;
+              }
+            } else {
+              if (err < best_err) {
+                best_err = err;
+                dp[idx] *= 1.1;
+              } else {
+                p[idx] += dp[idx];
+                dp[idx] *= 0.9;
+              }
+              twiddle_case_i++;
+            }
+            if (twiddle_case_i > 0) {
+              idx = (idx + 1) % p.size();
+              twiddle_case_1 = true;
+              twiddle_case_2 = true;
+              twiddle_case_i = 0;
+            }
+            twiddle_err = 0;  // Every twiddle_n observations, restart accumulating Twiddle error
+            n = 0;
+            // twiddle_idx++;
+          }
 
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value
-                    << std::endl;
+          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = throttle;
+          msgJson["throttle"] = throttle;  // Same as speed value.
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        }  // end "telemetry" if
+        }  // endif telemetry
       } else {
         // Manual driving
         string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
       }
-    }  // end websocket message if
+    }  // endif websocket message
   }); // end h.onMessage
 
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {

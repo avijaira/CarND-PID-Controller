@@ -1,7 +1,7 @@
 #include "PID.h"
 
 /**
- * Complete the PID class. You may add any additional desired functions.
+ * PID class.
  */
 
 PID::PID() {}
@@ -24,8 +24,6 @@ void PID::UpdateError(double cte) {
   d_error = cte - p_error;  // diff_CTE
   p_error = cte;  // CTE at time t (now)
   i_error += cte;  // int_CTE (now)
-  twiddle_error += cte * cte;
-  twiddle_count++;
 }
 
 double PID::TotalError() {
@@ -35,9 +33,3 @@ double PID::TotalError() {
    */
   return -Kp * p_error - Ki * i_error - Kd * d_error;
 }
-
-double PID::TwiddleError() {
-  /**
-   * Calculate and return the accumulated twiddle error
-   */
-  return twiddle_error;
