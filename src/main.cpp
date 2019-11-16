@@ -42,7 +42,7 @@ int main() {
   bool twiddle_case_1 = true;
   bool twiddle_case_2 = true;
   int n = 0;  // Keep track of Twiddle iteration
-  int twiddle_n = 500;  // Minimum iterations before accumulating Twiddle error
+  int twiddle_n = 600;  // Minimum iterations before accumulating Twiddle error
   double twiddle_err = 0.0;
   double err = 0.0;
   double best_err = 100000.0;
@@ -119,13 +119,16 @@ int main() {
 
             double sum_dp = dp[0] + dp[1] + dp[2];
             if (sum_dp > tol) {  // Reset simulator
+                // DEBUG
+                std::cout << "Twiddle Index: " << twiddle_idx << std::endl;
+
                 std::string reset_msg = "42[\"reset\",{}]";
                 ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT);
             }
           }
 
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "CTE: " << cte << " Steering Angle: " << steer_value << std::endl;
 
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle;  // Same as speed value.
