@@ -37,7 +37,7 @@ int main() {
   double dp[3] = {0.01, 0.0001, 0.05};
   int idx = 0;  // Parameter (p) and delta parameter (dp) index: [0-2]
   int twiddle_idx = 0;
-  double tol = 0.00001  // Tolerance or error below 1.0e-10
+  double tol = 0.00001;  // Tolerance or error below 1.0e-10
   int twiddle_case_i = 0;  // Identify Twiddle case
   bool twiddle_case_1 = true;
   bool twiddle_case_2 = true;
@@ -114,7 +114,13 @@ int main() {
             }
             twiddle_err = 0;  // Every twiddle_n observations, restart accumulating Twiddle error
             n = 0;
-            // twiddle_idx++;
+            twiddle_idx++;
+
+            double sum_dp = sum(dp);
+            if (sum_dp > tol) {  // Reset simulator
+                std::string reset_msg = "42[\"reset\",{}]";
+                ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT);
+            }
           }
 
           // DEBUG
