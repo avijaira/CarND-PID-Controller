@@ -104,12 +104,12 @@ int main() {
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value;
           double speed_value;
-          double throttle_value = 0.3;  // Same as speed value.
+          double throttle_value = 0.3;
           double max_speed = 20.0;
           json msgJson;
 
-          // Speed p = {0.3, 0.002, 0.0};
-          speed_value = 0.3 * (max_speed - speed);
+          // Reduce average speed
+          speed_value = throttle_value * (max_speed - speed);
 
           pid.UpdateError(cte);
           steer_value = pid.TotalError();
@@ -171,13 +171,13 @@ int main() {
               }
             } else {  // end if twiddle_n
               msgJson["steering_angle"] = steer_value;
-              msgJson["throttle"] = speed_value;  // Same as speed value.
+              msgJson["throttle"] = speed_value;
               auto msg = "42[\"steer\"," + msgJson.dump() + "]";
               ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
             }  // end else twiddle_n
           } else {  // end if twiddle
             msgJson["steering_angle"] = steer_value;
-            msgJson["throttle"] = speed_value;  // Same as speed value.
+            msgJson["throttle"] = speed_value;
             auto msg = "42[\"steer\"," + msgJson.dump() + "]";
             ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           }  // end else twiddle

@@ -5,6 +5,9 @@ Self-Driving Car Engineer Nanodegree Program
 
 ## PID Controller Implementation Details
 
+1. The vehicle successfully drive a lap around the track.
+2. I chose the final hyperparameters (P, I, D coefficients) using Twiddle algorithm.
+3. Used Term 2 Simulator v1.45 (released on Jun 14, 2017) for testing and validation.
 
 ## Dependencies
 
