@@ -4,7 +4,6 @@
 #include <string>
 #include "json.hpp"
 #include "PID.h"
-//#include "twiddle.h"
 
 // for convenience
 using nlohmann::json;
@@ -14,6 +13,7 @@ using std::string;
 constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
+
 
 // Checks if the SocketIO event has JSON data.
 string hasData(string s) {
@@ -29,12 +29,26 @@ string hasData(string s) {
   return "";
 }
 
+
 int main() {
   uWS::Hub h;
 
   PID pid;  // Steer PID
-  double p[3] = {0.05, 0.0001, 1.5};  // {Kp, Ki, Kd}
-  double dp[3] = {0.01, 0.0001, 0.1};
+  bool twiddle = true;
+  // std::array<double, 3> p = {0.1, 0.00005, 0.5};  // {Kp, Ki, Kd}
+  // std::array<double, 3> dp = {0.011, 0.0001, 0.1};
+  // std::array<double, 3> p = {0.111, 0.00015, 0.6};  // Experiment: twiddle_n = 1000
+  // std::array<double, 3> dp = {0.01089, 0.000099, 0.11};  // Experiment: twiddle_n = 1000
+  // std::array<double, 3> p = {0.12189, 0.000249, 0.6};  // Experiment: twiddle_n = 2000
+  // std::array<double, 3> dp = {0.011979, 0.0001089, 0.099};  // Experiment: twiddle_n = 2000
+  // std::array<double, 3> p = {0.133869, 0.0001401, 0.699};  // Experiment: twiddle_n = 3000
+  // std::array<double, 3> dp = {0.0131769, 0.00011979, 0.1089};  // Experiment: twiddle_n = 3000
+  // std::array<double, 3> p = {0.147046, 0.00002031, 0.8079};  // Experiment: twiddle_n = 4000
+  // std::array<double, 3> dp = {0.0144946, 0.000131769, 0.11979};  // Experiment: twiddle_n = 4000
+  // std::array<double, 3> p = {0.177485, 0.000297025, 0.92769};  // Experiment: twiddle_n = 6000
+  // std::array<double, 3> dp = {0.0175385, 0.00015944, 0.131769};  // Experiment: twiddle_n = 6000
+  std::array<double, 3> p = {0.214316, 0.000312969, 1.05946};  // Experiment: twiddle_n = 8000
+  std::array<double, 3> dp = {0.0212216, 0.000192922, 0.144946};  // Experiment: twiddle_n = 8000
   int idx = 0;  // Parameter (p) and delta parameter (dp) index: [0-2]
   int twiddle_idx = 0;
   double tol = 0.001;  // Tolerance or error below 1.0e-10
@@ -42,16 +56,27 @@ int main() {
   bool twiddle_case_1 = true;
   bool twiddle_case_2 = true;
   int n = 0;  // Keep track of Twiddle iteration
-  int twiddle_n = 600;  // Minimum iterations before accumulating Twiddle error
+  int twiddle_n = 8000;  // Minimum iterations before accumulating Twiddle error
   double twiddle_err = 0.0;
   double err = 0.0;
   double best_err = 100000.0;
+  std::array<double, 3> best_p = p;
 
   // Initialize the pid variable.
-  pid.Init(p[0], p[1], p[2]);
+  if (twiddle == true) {
+    pid.Init(p[0], p[1], p[2]);
+  } else {
+    pid.Init(0.214316, 0.000312969, 1.05946);  // Experiment: twiddle_n = 8000
+    // pid.Init(0.177485, 0.000297025, 0.92769);  // Experiment: twiddle_n = 6000
+    // pid.Init(0.147046, 0.00002031, 0.8079);  // Experiment: twiddle_n = 4000
+    // pid.Init(0.12189, 0.000249, 0.6);  // Experiment: twiddle_n = 3000
+    // pid.Init(0.12189, 0.000249, 0.6);  // Experiment: twiddle_n = 2000
+    // pid.Init(0.111, 0.00015, 0.6);  // Experiment: twiddle_n = 1000
+    // pid.Init(0.06, 0.00031, 1.29);
+  }
 
   h.onMessage([&pid, &p, &dp, &idx, &twiddle_idx, &tol, &twiddle_case_i, &twiddle_case_1, &twiddle_case_2,
-               &n, &twiddle_n, &twiddle_err, &err, &best_err]
+               &n, &twiddle_n, &twiddle_err, &err, &best_err, &best_p, &twiddle]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
@@ -67,82 +92,92 @@ int main() {
           double speed = std::stod(j[1]["speed"].get<string>());
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value;
-          double throttle = 0.3;  // Same as speed value.
+          double speed_value;
+          double throttle_value = 0.3;  // Same as speed value.
+          double max_speed = 20.0;
           json msgJson;
 
-          /**
-           * Calculate steering value here, remember the steering value is [-1, 1].
-           * Maybe use another PID controller to control the speed!
-           */
-          if (n == 0) {
-            pid.Init(p[0], p[1], p[2]);
-          }
+          // Speed p = {0.3, 0.002, 0.0};
+          speed_value = 0.3 * (max_speed - speed);
 
           pid.UpdateError(cte);
           steer_value = pid.TotalError();
 
-          twiddle_err += cte * cte;
-          n++;
-          if (n > twiddle_n) {
-            err = twiddle_err / twiddle_n;
-            if (twiddle_case_1) {  // Twiddle Case 1
-              p[idx] += dp[idx];  // Increase parameter range by delta parameter
-              twiddle_case_1 = false;
-            } else if (twiddle_case_2) {  // Twiddle Case 2
-              if (err < best_err) {
-                best_err = err;
-                dp[idx] *= 1.1;
+          if (twiddle == true) {
+            if (n == 0) {
+              pid.Init(p[0], p[1], p[2]);
+            }
+
+            twiddle_err += cte * cte;  // Accumulating Twiddle error
+            n++;
+
+            if (n > twiddle_n) {
+              err = twiddle_err / twiddle_n;
+              if (twiddle_case_1) {  // Twiddle Case 1
+                p[idx] += dp[idx];  // Increase parameter range by delta parameter
+                twiddle_case_1 = false;
+              } else if (twiddle_case_2) {  // Twiddle Case 2
+                if (err < best_err) {
+                  best_err = err;
+                  best_p = p;
+                  dp[idx] *= 1.1;
+                  twiddle_case_i++;
+                } else {
+                  p[idx] -= 2 * dp[idx];  // Decrease parameter range by delta parameter (tighter bounds)
+                  twiddle_case_2 = false;
+                }
+              } else {
+                if (err < best_err) {
+                  best_err = err;
+                  best_p = p;
+                  dp[idx] *= 1.1;
+                } else {
+                  p[idx] += dp[idx];
+                  dp[idx] *= 0.9;
+                }
                 twiddle_case_i++;
-              } else {
-                p[idx] -= 2 * dp[idx];  // Decrease parameter range by delta parameter (tighter bounds)
-                twiddle_case_2 = false;
               }
-            } else {
-              if (err < best_err) {
-                best_err = err;
-                dp[idx] *= 1.1;
-              } else {
-                p[idx] += dp[idx];
-                dp[idx] *= 0.9;
+              if (twiddle_case_i > 0) {
+                idx = (idx + 1) % 3;
+                twiddle_case_1 = true;
+                twiddle_case_2 = true;
+                twiddle_case_i = 0;
               }
-              twiddle_case_i++;
-            }
-            if (twiddle_case_i > 0) {
-              idx = (idx + 1) % 3;
-              twiddle_case_1 = true;
-              twiddle_case_2 = true;
-              twiddle_case_i = 0;
-            }
-            twiddle_err = 0;  // Every twiddle_n observations, restart accumulating Twiddle error
-            n = 0;
-            twiddle_idx++;
+              twiddle_err = 0;  // Every twiddle_n observations, restart accumulating Twiddle error
+              n = 0;
+              twiddle_idx++;
 
-            double sum_dp = dp[0] + dp[1] + dp[2];
-            if (sum_dp > tol) {  // Reset simulator
-                // DEBUG
-                std::cout << "Twiddle Index: " << twiddle_idx << std::endl;
+              // DEBUG
+              std::cout << "P = [" << p[0] << ", " << p[1] << ", " << p[2] << "]" << std::endl;
+              std::cout << "DP = [" << dp[0] << ", " << dp[1] << ", " << dp[2] << "]" << std::endl;
+              std::cout << "Best Error " << best_err << std::endl;
+              std::cout << "Best P = [" << best_p[0] << ", " << best_p[1] << ", " << best_p[2] << "]" << std::endl;
 
+              double sum_dp = dp[0] + dp[1] + dp[2];
+              if (sum_dp > tol) {  // Reset simulator
                 std::string reset_msg = "42[\"reset\",{}]";
                 ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT);
-            }
-          }
-
-          // DEBUG
-          std::cout << "CTE: " << cte << " Steering Angle: " << steer_value << std::endl;
-
-          msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = throttle;  // Same as speed value.
-          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        }  // endif telemetry
+              }
+            } else {  // end if twiddle_n
+              msgJson["steering_angle"] = steer_value;
+              msgJson["throttle"] = speed_value;  // Same as speed value.
+              auto msg = "42[\"steer\"," + msgJson.dump() + "]";
+              ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+            }  // end else twiddle_n
+          } else {  // end if twiddle
+            msgJson["steering_angle"] = steer_value;
+            msgJson["throttle"] = speed_value;  // Same as speed value.
+            auto msg = "42[\"steer\"," + msgJson.dump() + "]";
+            ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          }  // end else twiddle
+        }  // end if telemetry
       } else {
         // Manual driving
         string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
       }
-    }  // endif websocket message
-  }); // end h.onMessage
+    }  // end if websocket message
+  });  // end h.onMessage
 
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
     std::cout << "Connected!!!" << std::endl;
