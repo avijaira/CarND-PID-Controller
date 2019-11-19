@@ -34,7 +34,12 @@ int main() {
   uWS::Hub h;
 
   PID pid;  // Steer PID
-  bool twiddle = true;
+  /**
+   * twiddle: Flag to enable or disable Twiddle algorithm
+   * During experimentation, twiddle is set to true. Once parameter (p) and
+   * delta parameter (dp) are finalized, twiddle is set to false.
+   */
+  bool twiddle = false;
   // std::array<double, 3> p = {0.1, 0.00005, 0.5};  // {Kp, Ki, Kd}
   // std::array<double, 3> dp = {0.011, 0.0001, 0.1};
   // std::array<double, 3> p = {0.111, 0.00015, 0.6};  // Experiment: twiddle_n = 1000
@@ -56,7 +61,13 @@ int main() {
   bool twiddle_case_1 = true;
   bool twiddle_case_2 = true;
   int n = 0;  // Keep track of Twiddle iteration
-  int twiddle_n = 8000;  // Minimum iterations before accumulating Twiddle error
+
+  /**
+   * twiddle_n: Minimum iterations before accumulating Twiddle error
+   * During experimentation, used twiddle_n values from:
+   *   [500, 600, 800, 1000, 2000, 3000, 4000, 6000, 8000]
+   */
+  int twiddle_n = 8000;
   double twiddle_err = 0.0;
   double err = 0.0;
   double best_err = 100000.0;
@@ -148,10 +159,10 @@ int main() {
               twiddle_idx++;
 
               // DEBUG
-              std::cout << "P = [" << p[0] << ", " << p[1] << ", " << p[2] << "]" << std::endl;
-              std::cout << "DP = [" << dp[0] << ", " << dp[1] << ", " << dp[2] << "]" << std::endl;
-              std::cout << "Best Error " << best_err << std::endl;
-              std::cout << "Best P = [" << best_p[0] << ", " << best_p[1] << ", " << best_p[2] << "]" << std::endl;
+              // std::cout << "P = [" << p[0] << ", " << p[1] << ", " << p[2] << "]" << std::endl;
+              // std::cout << "DP = [" << dp[0] << ", " << dp[1] << ", " << dp[2] << "]" << std::endl;
+              // std::cout << "Best Error " << best_err << std::endl;
+              // std::cout << "Best P = [" << best_p[0] << ", " << best_p[1] << ", " << best_p[2] << "]" << std::endl;
 
               double sum_dp = dp[0] + dp[1] + dp[2];
               if (sum_dp > tol) {  // Reset simulator
